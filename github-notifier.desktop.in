@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GitHub Notifier
+Path={{WORK_DIR}}
+Exec=bash -c 'GITHUB_TOKEN={{GITHUB_TOKEN}} {{EXEC}} >> /tmp/github-notifier.log 2>&1'
+Restart=always
+X-GNOME-Autostart-enabled=true
+X-KDE-autostart-after=panel
+Terminal=false
