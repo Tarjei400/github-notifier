@@ -49,26 +49,31 @@ fn to_offset_date_time(t: DateTime<Utc>) -> Result<time::OffsetDateTime, time::e
 }
 
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 1)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> io::Result<()> {
     let last_check_time_file = ensure_config_dir()?;
     let saved_since =  load_last_check_time(&last_check_time_file).unwrap_or_else(|_| Utc.timestamp_opt(0, 0).unwrap());;
-
     let mut since =  to_offset_date_time(saved_since).ok();
-    eprintln!("Starting polling Github notifications::");
-
+    eprintln!("Starting polling Github notifications.");
     loop {
         let new_since = to_offset_date_time(Utc::now())
             .expect("Failed to convert to OffsetDateTime");
 
         let notifications = fetch_notifications(since);
 
-        for n in notifications {
+        let tasks: Vec<_> = notifications.into_iter()
+            .map(|n| github_notification(n.clone()))
+            .collect();
 
-            github_notification(n).await; // Stub function for notifications
+
+        let tasks_amount = tasks.len();
+
+        futures::future::join_all(tasks).await;
+        //Minimize timestamping only to moment when there were actually any notifications present
+        if tasks_amount > 0 {
+            save_last_check_time(&last_check_time_file, new_since)?;
         }
 
-        save_last_check_time(&last_check_time_file, new_since)?;
         std::thread::sleep(Duration::from_secs(INTERVAL_SECONDS));
 
         since = Some(new_since);

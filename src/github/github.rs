@@ -4,7 +4,7 @@ use ureq::http::Response;
 use time;
 use crate::app_config::AppConfig;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct NotificationDto {
     pub id: String,
     pub reason: String,
@@ -13,12 +13,12 @@ pub struct NotificationDto {
 }
 
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct Repository {
     pub full_name: String,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct Subject {
     pub title: String,
     #[serde(rename = "type")]
@@ -28,24 +28,24 @@ pub struct Subject {
     pub latest_comment_url: Option<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct NotificationDetailDto {
     #[serde(rename = "_links")]
     pub links: NotificationDetailLinks,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct CommentDto {
     #[serde(rename = "html_url")]
     pub url: String,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct NotificationDetailLinks {
     pub html: NotificationDetailLinkHref,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct NotificationDetailLinkHref {
     pub href: String,
 }
