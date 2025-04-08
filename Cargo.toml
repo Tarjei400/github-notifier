@@ -21,6 +21,7 @@ time = {  version = "0.3.41", default-features = true, features = ["formatting"]
 time-macros = { version = "0.2.0-alpha.1" }
 webbrowser = "1.0.4"
 
+
 [[bin]]
 doc = false
 name = "github-notifier"

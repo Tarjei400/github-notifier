@@ -13,6 +13,7 @@ use crate::github::github::{fetch_issue_comment, fetch_notification_details, fet
 use crate::notify::notify::github_notification;
 
 const INTERVAL_SECONDS: u64 = 60;
+const INTERVAL_TO_NEXT_NOTIFICATION_SECONDS: u64 = 12;
 const LAST_CHECK_FILE_NAME: &str = "last_check";
 const CONFIG_DIR_NAME: &str = ".config/github-notifier";
 const API_URL: &str = "https://api.github.com/notifications";
@@ -55,7 +56,12 @@ async fn main() -> io::Result<()> {
     let saved_since =  load_last_check_time(&last_check_time_file).unwrap_or_else(|_| Utc.timestamp_opt(0, 0).unwrap());;
 
     let mut since =  to_offset_date_time(saved_since).ok();
-    eprintln!("Starting polling Github notifications::");
+
+
+    eprintln!("Starting polling Github notifications.");
+    eprintln!("Listening for notifications since: {}", since.unwrap());
+
+    let mut tasks = Vec::new();
 
     loop {
         let new_since = to_offset_date_time(Utc::now())
@@ -63,15 +69,34 @@ async fn main() -> io::Result<()> {
 
         let notifications = fetch_notifications(since);
 
-        for n in notifications {
 
-            github_notification(n).await; // Stub function for notifications
-        }
+        let tasks_amount = tasks.len();
 
-        save_last_check_time(&last_check_time_file, new_since)?;
+        let new_tasks: Vec<_> = notifications.into_iter()
+            .map(
+                |n| {
+                    std::thread::sleep(Duration::from_secs(INTERVAL_TO_NEXT_NOTIFICATION_SECONDS));
+                    tokio::spawn(async move { github_notification(n.clone()).await })
+                }
+            )
+            .collect();
+        tasks.extend(new_tasks);
+
+        tasks.retain(|handle| !handle.is_finished());
+
+        eprintln!("There are {} tasks running.", tasks_amount);
+        //Minimize timestamping only to moment when there were actually any notifications present
+        // if tasks_amount > 0 {
+        //     save_last_check_time(&last_check_time_file, new_since)?;
+        // }
+
+        //save_last_check_time(&last_check_time_file, new_since)?;
         std::thread::sleep(Duration::from_secs(INTERVAL_SECONDS));
 
-        since = Some(new_since);
+        //TODO: Original idea was to filter notification posted after last check
+        // however as for now I would like not opened notification to be re-sent
+        // I think in future this behaviour should be configurable.
+        // since = Some(new_since);
     }
 }
 

@@ -1,4 +1,4 @@
-use notify_rust::{Hint, Notification};
+use notify_rust::{Hint, Notification, Timeout};
 use crate::github::github::{fetch_issue_comment, fetch_notification_details, mark_notification_as_read, CommentDto, NotificationDetailDto, NotificationDetailLinkHref, NotificationDetailLinks, NotificationDto};
 
 fn open_browser(notification: &NotificationDto, details: &Option<NotificationDetailDto>, comment: &Option<CommentDto>) {
@@ -37,44 +37,44 @@ pub async fn github_notification(notification: NotificationDto) {
             None => None
         };
 
-    let image = match(notification.subject.type_field.as_str()) {
-        "PullRequest" => "./assets/github-pr.png",
+    let image = match notification.subject.type_field.as_str() {
+        "PullRequest" => {
+            if let Some(pr) = &details {
+                match (pr.state.as_str(), pr.merged ) {
+                    ("open", _) => "./assets/pr-open.png",
+                    ("closed", true) => "./assets/pr-merged.png",
+                    ("closed", false) => "./assets/pr-closed.png",
+                    _ => "./assets/github.png", // fallback
+                }
+            } else {
+                "./assets/github-pr.png" // fallback if details not fetched
+            }
+        },
         _ => "./assets/github.png",
     };
 
     let handle = Notification::new()
         .summary(&notification.repository.full_name)
         .body(&notification.subject.title)
-        .icon("github")
-        .action("default", "default") // IDENTIFIER, LABEL
-        .action("clicked_a", "Mark as read") // IDENTIFIER, LABEL
-        .action("clicked_b", "Open in browser") // IDENTIFIER, LABEL
+        .id((notification.id.parse::<u64>().unwrap()  % u32::MAX as u64) as u32)
+        .timeout(Timeout::Never)
+        .action("default", "default")
+        .action("clicked_a", "✅ Mark as read")
+        .action("clicked_b", "🌐 Open in browser")
 
         .image(image)
         .unwrap()
         .show()
         .unwrap();
 
-    let mut wait_action = tokio::spawn(tokio::task::spawn_blocking(move || {
-        handle.wait_for_action(|action| match action {
-            "default" => {},
-            "clicked_a" => only_mark_as_read(&notification),
-            "clicked_b" => open_browser(&notification, &details, &latest_comment),
-            "__closed" => println!("the notification was closed"),
-            _ => println!("Not matching Action: {} ", action),
-        })
-    }));
-    let mut sleep_action = tokio::spawn(async {
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+
+
+    handle.wait_for_action(|action| match action {
+        "default" => open_browser(&notification, &details, &latest_comment),
+        "clicked_a" => only_mark_as_read(&notification),
+        "clicked_b" => open_browser(&notification, &details, &latest_comment),
+        // "__closed" => println!("the notification was closed"),
+        _ => println!("Not matching Action: {} ", action),
     });
 
-    //This prevents waiting for ever for action to happen on notification - we wait some time for action then carry on.
-    tokio::select! {
-        _ = &mut wait_action => {
-            sleep_action.abort(); // Clean up the sleeper
-        }
-        _ = &mut sleep_action => {
-            wait_action.abort();
-        }
-    }
 }
