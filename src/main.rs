@@ -50,7 +50,7 @@ fn to_offset_date_time(t: DateTime<Utc>) -> Result<time::OffsetDateTime, time::e
 }
 
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 1)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> io::Result<()> {
     let last_check_time_file = ensure_config_dir()?;
     let saved_since =  load_last_check_time(&last_check_time_file).unwrap_or_else(|_| Utc.timestamp_opt(0, 0).unwrap());;
