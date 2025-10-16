@@ -1,0 +1,21 @@
+{
+  "build": {
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "",
+    "devPath": "../dist",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "my-app",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "windows": [],
+    "systemTray": {
+      "iconPath": "icons/tray_icon.png"
+    },
+    "allowlist": {
+      "all": true
+    }
+  }
+}

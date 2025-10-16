@@ -1,5 +1,26 @@
+use std::sync::Arc;
+use chrono::Utc;
+use glib::{DateTime, TimeZone};
 use notify_rust::{Hint, Notification, Timeout};
 use crate::github::github::{fetch_issue_comment, fetch_notification_details, mark_notification_as_read, CommentDto, NotificationDetailDto, NotificationDetailLinkHref, NotificationDetailLinks, NotificationDto};
+use crate::notify::snooze_config_store::SnoozeConfigStore;
+
+#[derive(Debug)]
+pub enum NotificationType {
+    Mentions,
+    PullRequestOpened,
+    PullRequestClosed,
+    PullRequestMerged,
+    IssueOpened,
+    IssueClosed,
+    IssueAssigned,
+    IssueUnassigned,
+    IssueLabeled,
+    IssueUnlabeled,
+    IssueCommented,
+    PullRequestReviewRequested,
+    PullRequestReviewRequestRemoved,
+}
 
 fn open_browser(notification: &NotificationDto, details: &Option<NotificationDetailDto>, comment: &Option<CommentDto>) {
 
@@ -53,28 +74,42 @@ pub async fn github_notification(notification: NotificationDto) {
         _ => "./assets/github.png",
     };
 
-    let handle = Notification::new()
-        .summary(&notification.repository.full_name)
-        .body(&notification.subject.title)
-        .id((notification.id.parse::<u64>().unwrap()  % u32::MAX as u64) as u32)
-        .timeout(Timeout::Never)
-        .action("default", "default")
-        .action("clicked_a", "✅ Mark as read")
-        .action("clicked_b", "🌐 Open in browser")
-
-        .image(image)
-        .unwrap()
-        .show()
-        .unwrap();
+    let mut store = Arc::new(SnoozeConfigStore::open_default().unwrap());
+    let should_snooze = store.should_snooze_for_reason(
+        &notification.repository.owner.login,
+        &notification.repository.full_name,
+        &notification.reason,
+        DateTime::now_utc().unwrap(),
+    ).unwrap_or(false);
 
 
+    if !should_snooze {
+        let handle = Notification::new()
+            .summary(&notification.repository.full_name)
+            .body(&notification.subject.title)
+            .id((notification.id.parse::<u64>().unwrap()  % u32::MAX as u64) as u32)
+            .timeout(Timeout::Never)
+            .action("default", "default")
+            .action("clicked_a", "✅ Mark as read")
+            .action("clicked_b", "🌐 Open in browser")
 
-    handle.wait_for_action(|action| match action {
-        "default" => open_browser(&notification, &details, &latest_comment),
-        "clicked_a" => only_mark_as_read(&notification),
-        "clicked_b" => open_browser(&notification, &details, &latest_comment),
-        // "__closed" => println!("the notification was closed"),
-        _ => println!("Not matching Action: {} ", action),
-    });
+            .image(image)
+            .unwrap()
+            .show()
+            .unwrap();
+
+
+
+        handle.wait_for_action(|action| match action {
+            "default" => open_browser(&notification, &details, &latest_comment),
+            "clicked_a" => only_mark_as_read(&notification),
+            "clicked_b" => open_browser(&notification, &details, &latest_comment),
+            // "__closed" => println!("the notification was closed"),
+            _ => println!("Not matching Action: {} ", action),
+        });
+    } else {
+        only_mark_as_read(&notification)
+    }
+
 
 }

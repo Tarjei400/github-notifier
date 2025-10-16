@@ -5,14 +5,14 @@ edition = "2021"
 
 [dependencies]
 
-reqwest = { version = "0.12.7", default-features = false, features = ["json","rustls-tls"] }
+reqwest = { version = "0.12.7", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0.210", default-features = false, features = ["derive"] }
 
 tokio = { version = "1.44.1", default-features = false, features = ["rt-multi-thread", "macros"] }
 tokio-util = "0.7.12"
 
 serde_json = "1.0.128"
-chrono = "0.4.38"
+chrono = "0.4.42"
 dirs = "6.0.0"
 ureq = {  version = "3.0.10" , default-features = true ,features = ["json"] }
 
@@ -20,6 +20,13 @@ notify-rust = { version = "4.11.6", default-features = true, features = ["images
 time = {  version = "0.3.41", default-features = true, features = ["formatting"] }
 time-macros = { version = "0.2.0-alpha.1" }
 webbrowser = "1.0.4"
+png = "0.17.16"
+gtk = "0.18.2"
+glib = "0.21.0"
+tray-icon = "0.21.0"
+image = "0.25.4"
+log = "0.4.27"
+rusqlite = { version = "0.31", features = ["bundled"] } # or without "bundled" if you have system sqlite
 
 
 [[bin]]

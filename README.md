@@ -1,3 +1,5 @@
+# sh: rustup override set nightly
+
 # 🛎️ GitHub Notifier
 
 > A minimal Rust desktop app that keeps you updated with GitHub notifications via native desktop popups.

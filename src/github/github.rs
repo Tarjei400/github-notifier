@@ -16,6 +16,12 @@ pub struct NotificationDto {
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct Repository {
     pub full_name: String,
+    pub owner: Owner,
+}
+
+#[derive(Debug, serde::Deserialize, Clone)]
+pub struct Owner {
+    pub login: String,
 }
 
 #[derive(Debug, serde::Deserialize, Clone)]
