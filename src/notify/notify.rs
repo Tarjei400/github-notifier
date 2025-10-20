@@ -104,7 +104,7 @@ pub async fn github_notification(notification: NotificationDto) {
             "default" => open_browser(&notification, &details, &latest_comment),
             "clicked_a" => only_mark_as_read(&notification),
             "clicked_b" => open_browser(&notification, &details, &latest_comment),
-            // "__closed" => println!("the notification was closed"),
+            "__closed" => only_mark_as_read(&notification),
             _ => println!("Not matching Action: {} ", action),
         });
     } else {

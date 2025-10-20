@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use chrono::{TimeZone, Utc};
@@ -33,13 +34,43 @@ pub enum NotificationManagerMessage {
 #[derive(Debug)]
 pub struct NotificationManager {
     cancellation_token: Arc<CancellationToken>,
-    pub seen_repositories: Vec<String>,
-    pub seen_authors: Vec<String>,
     notification_send: Arc<Mutex<UnboundedSender<NotificationManagerMessage>>>,
     gui_receive: Arc<Mutex<UnboundedReceiver<GuiMessage>>>,
     store: Arc<SnoozeConfigStore>
 }
 
+#[derive(Debug)]
+pub struct SeenNotifications {
+
+    seen_notifications: VecDeque<String>
+
+}
+
+impl SeenNotifications {
+    pub fn new() -> SeenNotifications {
+        SeenNotifications {
+            seen_notifications: VecDeque::with_capacity(200)
+        }
+    }
+
+    pub fn add(&mut self, notification_id: String) {
+        if self.is_seen(&notification_id){
+            return;
+        }
+
+        if(self.seen_notifications.len() >= 200){
+            while(self.seen_notifications.len() >= 200){
+                self.seen_notifications.pop_front();
+            }
+        }
+        self.seen_notifications.push_back(notification_id);
+    }
+
+    pub fn is_seen(&self, notification_id: &str) -> bool {
+        let found = self.seen_notifications.iter().find(|x| {*x == notification_id});
+        found.is_some()
+    }
+}
 
 impl NotificationManager {
     pub fn new(
@@ -50,8 +81,6 @@ impl NotificationManager {
     ) -> NotificationManager {
         NotificationManager {
             cancellation_token,
-            seen_repositories: Vec::new(),
-            seen_authors: Vec::new(),
             notification_send,
             gui_receive,
             store
@@ -65,6 +94,9 @@ impl NotificationManager {
 
         let mut since =  to_offset_date_time(saved_since).ok();
         let mut tasks = Vec::new();
+
+        let mut seen_notifications = SeenNotifications::new();
+
         loop {
             if self.cancellation_token.is_cancelled(){
                 break;
@@ -74,12 +106,20 @@ impl NotificationManager {
 
             let notifications = fetch_notifications(since);
 
+            //TODO: Seen notifications is ever growing, for now its fine, but it would be nice to clean it
+            //maybe after notification action is triggered?
+
+
 
             let tasks_amount = tasks.len();
 
             let new_tasks: Vec<_> = notifications.into_iter()
+                .filter(|n| !seen_notifications.is_seen(&n.id))
+                .collect::<Vec<_>>()  // Collect first to end the immutable borrow
+                .into_iter()
                 .map(
                     |n| {
+                        seen_notifications.add(n.id.clone());
                         self.store.add_repo(&n.repository.owner.login, &n.repository.full_name);
                         let repos = self.store.list_all_repos();
                         std::thread::sleep(Duration::from_secs(INTERVAL_TO_NEXT_NOTIFICATION_SECONDS));
