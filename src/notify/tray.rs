@@ -17,67 +17,10 @@ use crate::notify::snooze_config_store::SnoozeConfigStore;
 
 pub struct Tray {
     cancellation_token: Arc<CancellationToken>,
-    state: Arc<Mutex<TrayState>>,
-    gui_recv: Arc<Mutex<UnboundedReceiver<GuiMessage>>>,
-    snooze_send: Arc<Mutex<UnboundedSender<SnoozeMessage>>>,
     store: Arc<SnoozeConfigStore>,
 
 }
 
-#[derive(Debug)]
-pub struct RepositoryMenuItemData {
-    pub id: String,
-    pub name: String,
-    pub count: String
-}
-
-#[derive(Debug)]
-pub struct AuthorMenuItemData {
-    pub id: String,
-    pub name: String,
-    pub count: String,
-}
-
-#[derive(Debug)]
-pub enum GuiMessage {
-    UpdateRepositories(RepositoryMenuItemData),
-    UpdateAuthors(RepositoryMenuItemData),
-
-    Quit,
-}
-
-#[derive(Debug)]
-pub enum SnoozeMessage {
-    SnoozeAuthor(AuthorMenuItemData),
-    UnSnoozeAuthor(AuthorMenuItemData),
-    SnoozeRepository(RepositoryMenuItemData),
-    UnSnoozeRepository(RepositoryMenuItemData),
-    ToggleNotificationType(NotificationType),
-    ShowMentions,
-    ShowSetAsReviewer,
-    Quit,
-}
-
-
-pub struct TrayState {
-
-    pub repository_items: HashMap<String, RepositoryMenuItemData>,
-    pub author_items: HashMap<String, RepositoryMenuItemData>,
-}
-
-impl TrayState {
-    fn new() -> Self {
-        Self {
-            repository_items: HashMap::new(),
-            author_items: HashMap::new(),
-        }
-    }
-
-    fn clear(&mut self) {
-        self.repository_items.clear();
-        self.author_items.clear();
-    }
-}
 // helper: build a stable id for each repo action
 fn repo_action_id(owner: &str, repo: &str, action: &str) -> MenuId {
     // id format: "repo/<owner>/<repo>/<action>"
@@ -88,54 +31,13 @@ impl Tray {
 
     pub fn new(
         cancellation_token: Arc<CancellationToken>,
-        gui_recv: Arc<Mutex<UnboundedReceiver<GuiMessage>>>,
-        snooze_send: Arc<Mutex<UnboundedSender<SnoozeMessage>>>,
         store: Arc<SnoozeConfigStore>
     ) -> Arc<Self> {
         Arc::new(Self {
             cancellation_token,
-            gui_recv,
-            snooze_send,
-            state: Arc::new(Mutex::new(TrayState::new())),
             store
 
         })
-    }
-    fn process_messages(self: &Arc<Self>) {
-        loop {
-            match self.gui_recv.lock().unwrap().try_recv() {
-                Ok(msg) => {
-                    // Process the message
-                    info!("Received Gui message: {:?}", msg);
-                }
-                Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {
-                    // No messages – yield to let other tasks run
-                    info!("No Gui messages:");
-                    return;
-                }
-                Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
-                    // Sender is dropped – exit the loop
-                    info!("Gui channel disconnected:");
-                    break;
-                }
-            }
-        }
-    }
-    fn process_menu_clicks(self: &Arc<Self>) {
-        loop {
-            match TrayIconEvent::receiver().try_recv() {
-                Ok(msg) => {
-                    // Process the message
-                    info!("Received Tray event message: {:?}", msg);
-                }
-                Err(Error) => {
-                    // No messages – yield to let other tasks run
-                    info!("Some error eccoured - we ignore it:");
-                    return;
-                }
-
-            }
-        }
     }
 
 
@@ -312,8 +214,6 @@ impl Tray {
             if self.cancellation_token.is_cancelled() {
                 break;
             }
-            self.process_menu_clicks();
-            self.process_messages();
             gtk::main_iteration();
         }
 

@@ -8,34 +8,11 @@ use crate::github::github::fetch_notifications;
 use crate::{ensure_config_dir, load_last_check_time, save_last_check_time, to_offset_date_time, INTERVAL_SECONDS, INTERVAL_TO_NEXT_NOTIFICATION_SECONDS};
 use crate::notify::notify::github_notification;
 use crate::notify::snooze_config_store::SnoozeConfigStore;
-use crate::notify::tray::GuiMessage;
 
-#[derive(Debug)]
-pub struct RepositoryMenuItemData {
-    pub id: String,
-    pub name: String,
-    pub count: String
-}
 
-#[derive(Debug)]
-pub struct AuthorMenuItemData {
-    pub id: String,
-    pub name: String,
-    pub count: String,
-}
-
-#[derive(Debug)]
-pub enum NotificationManagerMessage {
-    UpdateRepositories(RepositoryMenuItemData),
-    UpdateAuthors(RepositoryMenuItemData),
-
-    Quit,
-}
 #[derive(Debug)]
 pub struct NotificationManager {
     cancellation_token: Arc<CancellationToken>,
-    notification_send: Arc<Mutex<UnboundedSender<NotificationManagerMessage>>>,
-    gui_receive: Arc<Mutex<UnboundedReceiver<GuiMessage>>>,
     store: Arc<SnoozeConfigStore>
 }
 
@@ -75,14 +52,10 @@ impl SeenNotifications {
 impl NotificationManager {
     pub fn new(
         cancellation_token: Arc<CancellationToken>,
-        notification_send: Arc<Mutex<UnboundedSender<NotificationManagerMessage>>>,
-        gui_receive: Arc<Mutex<UnboundedReceiver<GuiMessage>>>,
         store: Arc<SnoozeConfigStore>
     ) -> NotificationManager {
         NotificationManager {
             cancellation_token,
-            notification_send,
-            gui_receive,
             store
         }
     }

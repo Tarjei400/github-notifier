@@ -15,8 +15,8 @@ use tokio::sync::mpsc::unbounded_channel;
 use tokio_util::sync::CancellationToken;
 use crate::github::github::fetch_notifications;
 use crate::notify::notify::github_notification;
-use notify::tray::{GuiMessage, SnoozeMessage, Tray};
-use crate::notify::notification_manager::{NotificationManager, NotificationManagerMessage};
+use notify::tray::{Tray};
+use crate::notify::notification_manager::{NotificationManager};
 use crate::notify::snooze_config_store::SnoozeConfigStore;
 
 const INTERVAL_SECONDS: u64 = 60;
@@ -82,33 +82,19 @@ async fn main() -> io::Result<()> {
 
 
     let mut since =  to_offset_date_time(saved_since).ok();
-    
-
-    let (tx, rx) = mpsc::sync_channel::<Message>(2);
 
     let cancellation_token = Arc::new(CancellationToken::new());
 
-    let (notification_send, mut notification_recv) = unbounded_channel::<NotificationManagerMessage>();
-    let (gui_send, mut gui_recv) = unbounded_channel::<GuiMessage>();
-    let (snooze_send, mut snooze_recv) = unbounded_channel::<SnoozeMessage>();
-
-    let mt_gui_recv = Arc::new(Mutex::new(gui_recv));
-    let mt_snooze_send = Arc::new(Mutex::new(snooze_send));
-    let mt_notification_recv = Arc::new(Mutex::new(notification_recv));
-    let mt_notification_send = Arc::new(Mutex::new(notification_send));
-
     let mut store = Arc::new(SnoozeConfigStore::open_default().unwrap());
-    // let (gui_tx, gui_rx) = MainContext::channel(gtk::glib::Priority::default());
-    let mut notifications_manager = NotificationManager::new(cancellation_token.clone(), mt_notification_send,mt_gui_recv.clone(), store.clone());
-    let tray = Tray::new(cancellation_token.clone(), mt_gui_recv, mt_snooze_send, store.clone());
+
+    let mut notifications_manager = NotificationManager::new(cancellation_token.clone(), store.clone());
+    let tray = Tray::new(cancellation_token.clone(), store.clone());
     let trayHandle = tray.run();
 
 
     eprintln!("Starting polling Github notifications.");
     eprintln!("Listening for notifications since: {}", since.unwrap());
 
-
-    gui_send.send(GuiMessage::Quit);
     notifications_manager.run();
     Ok(())
 
