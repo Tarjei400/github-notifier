@@ -2,7 +2,7 @@ use std::sync::Arc;
 use chrono::Utc;
 use glib::{DateTime, TimeZone};
 use notify_rust::{Hint, Notification, Timeout};
-use crate::github::github::{fetch_issue_comment, fetch_notification_details, mark_notification_as_read, CommentDto, NotificationDetailDto, NotificationDetailLinkHref, NotificationDetailLinks, NotificationDto};
+use crate::github::github::{fetch_issue_comment, fetch_notification_details, mark_notification_as_read, CommentDto, NotificationDetailDto, NotificationDto};
 use crate::notify::snooze_config_store::SnoozeConfigStore;
 
 #[derive(Debug)]
@@ -34,7 +34,14 @@ fn open_browser(notification: &NotificationDto, details: &Option<NotificationDet
     let url: &str = if let Some(comment) = comment {
         comment.url.as_str()
     } else if let Some(details) = details {
-        details.links.html.href.as_str()
+        if let Some(links) = &details.links {
+            links.html.href.as_str()
+        } else if let Some(html_url) = &details.html_url {
+            html_url.as_str()
+        } else {
+            println!("No URL found to open.");
+            return;
+        }
     } else {
         println!("No URL found to open.");
         return;
@@ -61,16 +68,30 @@ pub async fn github_notification(notification: NotificationDto) {
     let image = match notification.subject.type_field.as_str() {
         "PullRequest" => {
             if let Some(pr) = &details {
-                match (pr.state.as_str(), pr.merged ) {
-                    ("open", _) => "./assets/pr-open.png",
-                    ("closed", true) => "./assets/pr-merged.png",
-                    ("closed", false) => "./assets/pr-closed.png",
-                    _ => "./assets/github.png", // fallback
+                match (pr.state.as_deref(), pr.merged) {
+                    (Some("open"), _) => "./assets/pr-open.png",
+                    (Some("closed"), true) => "./assets/pr-merged.png",
+                    (Some("closed"), false) => "./assets/pr-closed.png",
+                    _ => "./assets/github.png",
                 }
             } else {
-                "./assets/github-pr.png" // fallback if details not fetched
+                "./assets/pr-open.png"
             }
         },
+        "Issue" => {
+            if let Some(issue) = &details {
+                match issue.state.as_deref() {
+                    Some("open") => "./assets/issue-open.png",
+                    Some("closed") => "./assets/issue-closed.png",
+                    _ => "./assets/issue-open.png",
+                }
+            } else {
+                "./assets/issue-open.png"
+            }
+        },
+        "Release" => "./assets/release.png",
+        "Commit" => "./assets/commit.png",
+        "Discussion" => "./assets/discussion.png",
         _ => "./assets/github.png",
     };
 

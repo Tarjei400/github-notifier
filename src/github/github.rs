@@ -36,12 +36,14 @@ pub struct Subject {
 
 #[derive(Debug, serde::Deserialize, Clone)]
 pub struct NotificationDetailDto {
-
-    pub state: String,
+    #[serde(default)]
+    pub state: Option<String>,
+    #[serde(default)]
     pub merged: bool,
-
-    #[serde(rename = "_links")]
-    pub links: NotificationDetailLinks,
+    #[serde(default, rename = "_links")]
+    pub links: Option<NotificationDetailLinks>,
+    #[serde(default, rename = "html_url")]
+    pub html_url: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, Clone)]
